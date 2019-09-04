@@ -1,21 +1,31 @@
+import pprint
+import sys
 import os
+import subprocess
+
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
-
-client_id=os.environ['SPOTIFY_ID']
-client_pw=os.environ['SPOTIFY_PW']
-
-client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_pw)
-
-sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+import spotipy.util as util
 
 
-playlists = sp.user_playlists('kevinavalo')
+client_id = os.environ['SPOTIFY_ID']
+client_secret = os.environ['SPOTIFY_PW']
+redirect_uri = 'http://localhost:8000/'
 
-for playlist in playlists:
-	for i, playlist in enumerate(playlists['items']):
-		print("%4d %s %s" % (i + 1 + playlists['offset'], playlist['uri'],  playlist['name']))
-	if playlists['next']:
-		playlists = sp.next(playlists)
-	else:
-		playlists = None
+scope = 'user-library-read'
+
+if len(sys.argv) > 1:
+    username = sys.argv[1]
+else:
+    print("Usage: %s username" % (sys.argv[0],))
+    sys.exit()
+
+token = util.prompt_for_user_token(username, scope, client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri)
+
+if token:
+    sp = spotipy.Spotify(auth=token)
+    results = sp.current_user_saved_tracks()
+    for item in results['items']:
+        track = item['track']
+        print(track['name'] + ' - ' + track['artists'][0]['name'])
+else:
+    print("Can't get token for", username)
